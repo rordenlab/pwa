@@ -1,0 +1,12 @@
+node_modules
+dist
+test-results
+playwright-report
+
+# audit-response trail lives in commit messages + the roadmap docs.
+audit*.md
+plan*.md
+progress*.md
+
+# Design files
+inspiration/

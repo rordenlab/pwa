@@ -1,0 +1,39 @@
+{
+  "name": "mrivue",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "bun scripts/llms.ts && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "biome check src tests scripts",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "llms": "bun scripts/llms.ts"
+  },
+  "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@niivue/niivue": "1.0.0-rc.37",
+    "codemirror": "^6.0.2",
+    "radix-ui": "^1.8.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-resizable-panels": "^4.15.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@biomejs/biome": "^2.6.3",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.5"
+  },
+  "license": "BSD-2-Clause"
+}

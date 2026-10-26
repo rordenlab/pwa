@@ -1,0 +1,106 @@
+{
+  "cdn": "https://cdn.jsdelivr.net/gh/niivue/niivue-demo-images@f6f98294c1fa89a3a32e8a44eab92368374150a0/",
+  "groups": {
+    "Volumes": [
+      "spm152.nii.gz",
+      "spmMotor.nii.gz",
+      "mni152.nii.gz",
+      "chris_t1.nii.gz",
+      "chris_t2.nii.gz",
+      "chris_MRA.nii.gz",
+      "CT_Abdo.nii.gz",
+      "CT_Philips.nii.gz",
+      "samples/motor_4t95vol.nii.gz"
+    ],
+    "Meshes": [
+      "samples/BrainMesh_ICBM152.lh.mz3",
+      "samples/BrainMesh_ICBM152.rh.mz3",
+      "samples/BrainMesh_ICBM152_smoothed.lh.mz3",
+      "samples/mni152_2009.mz3",
+      "samples/scalp.mz3",
+      "samples/motor_4t95mesh.mz3",
+      "CIT168/CIT168.mz3"
+    ],
+    "Atlases": ["samples/aal.nii.gz"],
+    "Tracts": ["samples/stroke.trk.gz"],
+    "Connectomes": ["samples/LPBA40.jcon"]
+  },
+  "about": {
+    "spm152.nii.gz": {
+      "desc": "T1-weighted MNI152 template brain (SPM average size), 2 mm; good background for MNI-space statistics",
+      "license": "ICBM 2009 nonlinear template (MNI; free use with attribution)"
+    },
+    "spmMotor.nii.gz": {
+      "desc": "fMRI motor task t-statistic map in MNI space (positive and negative values); overlay on spm152",
+      "license": "CC BY-NC 4.0 (C. Rorden, McCausland Center)"
+    },
+    "mni152.nii.gz": {
+      "desc": "T1-weighted MNI152 template brain, 1 mm",
+      "license": "ICBM 2009 nonlinear template (MNI; free use with attribution)"
+    },
+    "chris_t1.nii.gz": {
+      "desc": "T1-weighted MRI of one individual (native space)",
+      "license": "CC BY-NC 4.0 (C. Rorden, McCausland Center)"
+    },
+    "chris_t2.nii.gz": {
+      "desc": "T2-weighted MRI of one individual (native space)",
+      "license": "CC BY-NC 4.0 (C. Rorden, McCausland Center)"
+    },
+    "chris_MRA.nii.gz": {
+      "desc": "MR angiogram (bright vessels); ideal for maximum intensity projection",
+      "license": "CC BY-NC 4.0 (C. Rorden, McCausland Center)"
+    },
+    "CT_Abdo.nii.gz": {
+      "desc": "Abdominal CT in Hounsfield units; use ct_* colormaps",
+      "license": "Slicer example dataset (S. Pieper); not stated"
+    },
+    "CT_Philips.nii.gz": {
+      "desc": "Head CT in Hounsfield units; use ct_* colormaps",
+      "license": "courtesy Philips Medical; not stated"
+    },
+    "motor_4t95vol.nii.gz": {
+      "desc": "fMRI motor t-statistic volume in MNI space (FWE threshold ~4.95); paint onto meshes with addMeshLayer",
+      "license": "Surfice sample (McCausland Center); not stated"
+    },
+    "BrainMesh_ICBM152.lh.mz3": {
+      "desc": "Left hemisphere cortical surface mesh (MNI space)",
+      "license": "BrainNet Viewer (Xia et al. 2013); not stated"
+    },
+    "BrainMesh_ICBM152.rh.mz3": {
+      "desc": "Right hemisphere cortical surface mesh (MNI space)",
+      "license": "BrainNet Viewer (Xia et al. 2013); not stated"
+    },
+    "BrainMesh_ICBM152_smoothed.lh.mz3": {
+      "desc": "Smoothed left hemisphere surface (shows deep structures through it)",
+      "license": "BrainNet Viewer (Xia et al. 2013); not stated"
+    },
+    "mni152_2009.mz3": {
+      "desc": "Whole-brain surface mesh of the MNI152 2009 template",
+      "license": "ICBM 2009 nonlinear template (MNI; free use with attribution)"
+    },
+    "scalp.mz3": {
+      "desc": "Scalp surface mesh (MNI space); use with low opacity around a brain",
+      "license": "Surfice sample; not stated"
+    },
+    "motor_4t95mesh.mz3": {
+      "desc": "Isosurface mesh of the motor fMRI activation (MNI space)",
+      "license": "Surfice sample (McCausland Center); not stated"
+    },
+    "CIT168.mz3": {
+      "desc": "Subcortical nuclei atlas as meshes (Pauli et al. 2018)",
+      "license": "CC BY 4.0"
+    },
+    "aal.nii.gz": {
+      "desc": "AAL anatomical atlas: labeled regions in MNI space",
+      "license": "AAL (Tzourio-Mazoyer et al. 2002); not stated"
+    },
+    "stroke.trk.gz": {
+      "desc": "Whole-brain tractography (streamlines) of a stroke patient (native space)",
+      "license": "courtesy L. Bonilha; not stated"
+    },
+    "LPBA40.jcon": {
+      "desc": "Connectome: nodes and edges for the 56 LPBA40 regions (MNI space)",
+      "license": "LPBA40 atlas (Shattuck et al. 2008, LONI); not stated"
+    }
+  }
+}
