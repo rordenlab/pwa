@@ -1,0 +1,240 @@
+# MRIvue scripting brief for AI assistants
+
+> MRIvue is a browser viewer for brain volumes (NIfTI and more), meshes, tractography and connectomes, built on NiiVue 1.0.0-rc.37. Users paste a script into its Script panel and press Run (or Shift+Enter).
+
+## How to answer
+Reply with ONE JavaScript code block, nothing else needed. It runs as the body of an async function:
+- Top-level `await` works. The globals are `nv` (the viewer) and `console` (prints to the output pane).
+- Begin with `await nv.resetScene()`: it empties the scene and restores fixed default settings (background, view, neurological convention, clip planes, mosaic, render options), whatever the user's preferences, so the result does not depend on earlier edits. Omit it only when the user asks to build on the current scene.
+- Load data by file name, e.g. `{ url: 'spm152' }` (extension optional). Use the sample data below, or the user's own file names: MRIvue finds them in the user's folder or asks the user to locate them.
+- `nv.volumes[0]` is the background; later volumes are overlays drawn on top. Await every load before using it.
+- Change things through `nv` calls and properties (not by editing objects read from `nv.volumes`).
+- Animate with `await nv.wait(ms)` inside loops; the user can stop with Esc.
+- To give a one-click link instead, base64url-encode the UTF-8 script (no padding) into `https://rordenlab.github.io/pwa/#script=<encoded>`. The link opens the script for review; it runs only when the user presses Run. Keep links under ~8 KB; otherwise give the code block.
+- Only use members listed here; check names with `console.log(nv.colormaps)` or `console.log(nv.meshShaders)` when unsure.
+
+## Conventions
+- sliceType: 0 axial, 1 coronal, 2 sagittal, 3 multiplanar, 4 render (3D). mosaicString like `'A -20 0 20 40; S R 0'` (A/C/S orientation, numbers are mm, R = rendered tile, ; = new row).
+- Camera: azimuth 90 views the left side, 270 the right, 180 the front, 0 the back; elevation 90 views from above.
+- Clip planes: `nv.setClipPlanes([[depth, azimuth, elevation], ...])`, depth -1..1, up to 6 planes; they cut volumes (not meshes). With `isClipPlaneCutaway = true` only the region where all planes overlap is removed.
+- volumeRenderMode: 0 composite, 1 maximum intensity projection, 2 slices. Matcap lighting: `await nv.loadMatcap('Cortex')` (or 'Shiny') with `nv.volumeIllumination = 0.5`.
+- Colormaps (case-insensitive) include gray, hot, warm, winter, red, green, blue, redyell, blue2red, actc, viridis, plasma, inferno, bone, jet, and CT maps (ct_bones, ct_kidneys, ct_brain, ct_soft_tissue). Two-sided statistics: `colormap` for positive values, `colormapNegative` with `calMinNeg`/`calMaxNeg` for negative ones.
+- Mesh shaders: phong, flat, silhouette, rim, crevice, crosscut, matte, toon, outline.
+- Paint a volume onto a cortical mesh: `await nv.addMeshLayer(0, { url: 'motor_4t95vol', colormap: 'warm', calMin: 2, calMax: 12 })` (MRIvue samples the volume at each vertex).
+
+## Data available by name
+- `spm152.nii.gz` (Volumes) — T1-weighted MNI152 template brain (SPM average size), 2 mm; good background for MNI-space statistics. License: ICBM 2009 nonlinear template (MNI; free use with attribution).
+- `spmMotor.nii.gz` (Volumes) — fMRI motor task t-statistic map in MNI space (positive and negative values); overlay on spm152. License: CC BY-NC 4.0 (C. Rorden, McCausland Center).
+- `mni152.nii.gz` (Volumes) — T1-weighted MNI152 2009 template brain (0.74 mm); opened at startup. Slightly larger brain than spm152. License: ICBM 2009 nonlinear template (MNI; free use with attribution).
+- `chris_t1.nii.gz` (Volumes) — T1-weighted MRI of one individual (native space). License: CC BY-NC 4.0 (C. Rorden, McCausland Center).
+- `chris_t2.nii.gz` (Volumes) — T2-weighted MRI of one individual (native space). License: CC BY-NC 4.0 (C. Rorden, McCausland Center).
+- `chris_MRA.nii.gz` (Volumes) — MR angiogram (bright vessels); ideal for maximum intensity projection. License: CC BY-NC 4.0 (C. Rorden, McCausland Center).
+- `CT_Abdo.nii.gz` (Volumes) — Abdominal CT in Hounsfield units; use ct_* colormaps. License: Slicer example dataset (S. Pieper); not stated.
+- `CT_Philips.nii.gz` (Volumes) — Head CT in Hounsfield units; use ct_* colormaps. License: courtesy Philips Medical; not stated.
+- `motor_4t95vol.nii.gz` (Volumes) — fMRI motor t-statistic volume in MNI space (FWE threshold ~4.95); paint onto meshes with addMeshLayer. License: Surfice sample (McCausland Center); not stated.
+- `BrainMesh_ICBM152.lh.mz3` (Meshes) — Left hemisphere cortical surface mesh (MNI space). License: BrainNet Viewer (Xia et al. 2013); not stated.
+- `BrainMesh_ICBM152.rh.mz3` (Meshes) — Right hemisphere cortical surface mesh (MNI space). License: BrainNet Viewer (Xia et al. 2013); not stated.
+- `BrainMesh_ICBM152_smoothed.lh.mz3` (Meshes) — Smoothed left hemisphere surface (shows deep structures through it). License: BrainNet Viewer (Xia et al. 2013); not stated.
+- `mni152_2009.mz3` (Meshes) — Whole-brain surface mesh of the MNI152 2009 template. License: ICBM 2009 nonlinear template (MNI; free use with attribution).
+- `scalp.mz3` (Meshes) — Scalp surface mesh (MNI space); use with low opacity around a brain. License: Surfice sample; not stated.
+- `motor_4t95mesh.mz3` (Meshes) — Isosurface mesh of the motor fMRI activation (MNI space). License: Surfice sample (McCausland Center); not stated.
+- `CIT168.mz3` (Meshes) — Subcortical nuclei atlas as meshes (Pauli et al. 2018). License: CC BY 4.0.
+- `aal.nii.gz` (Atlases) — AAL anatomical atlas: labeled regions in MNI space. License: AAL (Tzourio-Mazoyer et al. 2002); not stated.
+- `TR_S_R.tt.gz` (Tracts) — Superior thalamic radiation, right (one bundle of the HCP-1065 tractography atlas, MNI space; DSI Studio .tt format). License: open source, https://brain.labsolver.org/hcp_trk_atlas.html (Yeh 2022).
+- `yeh2022.trx` (Tracts) — HCP-1065 tractography atlas (Yeh 2022) in MNI space; streamlines grouped into named bundles: nv.getTractGroups(0), setTractOptions(0, { groupColors }). License: open source, https://brain.labsolver.org/hcp_trk_atlas.html (Yeh 2022).
+- `LPBA40.jcon` (Connectomes) — Connectome: nodes and edges for the 56 LPBA40 regions (MNI space). License: BSD-2-Clause (MRIcroGL, github.com/rordenlab/MRIcroGL); LPBA40 atlas, Shattuck et al. 2008.
+- `aal.json` (Labels) — Region names and colors for aal.nii.gz: nv.setColormapLabelFromUrl(volumeIndex, 'aal.json'). License: BSD-2-Clause (NiiVue dev-images); AAL, Tzourio-Mazoyer et al. 2002.
+
+## API (curated subset of NiiVue 1.0.0-rc.37)
+### Load and remove
+- `nv.loadVolumes(volumes: ImageFromUrlOptions | NVImage | Array<ImageFromUrlOptions | NVImage>): Promise<this>`
+- `nv.addVolume(volume: ImageFromUrlOptions | NVImage): Promise<this>`
+- `nv.removeVolume(volumeIndex: number): Promise<void>` — Remove a single volume by index, emitting `volumeRemoved`.
+- `nv.removeAllVolumes(): Promise<void>`
+- `nv.moveVolumeUp(volumeIndex: number): Promise<void>` — Move a volume up one index position in the stack of loaded volumes (toward the top layer).
+- `nv.moveVolumeDown(volumeIndex: number): Promise<void>` — Move a volume down one index position in the stack of loaded volumes (toward the background).
+- `nv.loadMeshes(meshes: MeshFromUrlOptions | MeshFromUrlOptions[]): Promise<this>`
+- `nv.addMesh(mesh: MeshFromUrlOptions | NVMeshType): Promise<this>`
+- `nv.removeMesh(meshIndex: number): Promise<void>`
+- `nv.removeAllMeshes(): Promise<void>`
+- `nv.addMeshLayer(meshIndex: number, layerOpts: MeshLayerFromUrlOptions): Promise<this>` — Add a scalar overlay layer to a mesh.
+- `nv.removeMeshLayer(meshIndex: number, layerIndex: number): Promise<this>` — Remove a scalar overlay layer from a mesh.
+
+### Change appearance
+- `nv.setVolume(volumeIndex: number, options: VolumeUpdate): Promise<void>` — Update display properties of a loaded volume.
+- `nv.setMesh(meshIndex: number, options: MeshUpdate): Promise<void>` — Update display properties of a loaded mesh.
+- `nv.setMeshLayerProperty(meshIndex: number, layerIndex: number, options: Partial<NVMeshLayer>): Promise<void>` — Update properties of a mesh layer (colormap, cal_min, cal_max, opacity, etc.).
+- `nv.setTractOptions(meshIndex: number, options: Partial<NVTractOptions>): Promise<void>` — Update tract tessellation/display options and re-tessellate.
+- `nv.setConnectomeOptions(meshIndex: number, options: Partial<NVConnectomeOptions>): Promise<void>` — Update connectome extrusion/display options and re-extrude.
+- `nv.backgroundColor: [number, number, number, number]` (settable)
+- `nv.isColorbarVisible: boolean` (settable)
+- `nv.isLegendVisible: boolean` (settable)
+- `nv.isOrientCubeVisible: boolean` (settable) — Control whether the orientation cube is shown on the 3D render view.
+- `nv.isRadiological: boolean` (settable) — Control whether 2D slices use radiological or neurological convention.
+- `nv.setColormapLabelFromUrl(volumeIndex: number, url: string | File): Promise<void>` — Fetch a label colormap JSON from a URL or File and apply it to a volume.
+
+### View and camera
+- `nv.sliceType: number` (settable)
+- `nv.mosaicString: string` (settable)
+- `nv.azimuth: number` (settable)
+- `nv.elevation: number` (settable)
+- `nv.setCrosshairPos(pos: [number, number, number]): void`
+- `nv.scaleMultiplier: number` (settable)
+
+### 3D rendering
+- `nv.setClipPlanes(depthAziElevs: number[][]): void`
+- `nv.isClipPlaneCutaway: boolean` (settable)
+- `nv.clipPlaneColor: number[]` (settable)
+- `nv.volumeRenderMode: number` (settable) — What the 3D render tile draws: `VOLUME_RENDER_MODE.COMPOSITE` (default, the OVER ray-march), `VOLUME_RENDER_MODE.MAXIMUM` (maximum-intensity projection), or `VOLUME_RENDER_MODE.SLICES` (no march at all -- the three crosshair planes, composited front to back, with overlays sampled on them as the 2D tiles do). 2D slices draw a single plane and are unaffected.
+- `nv.volumeIllumination: number` (settable)
+- `nv.loadMatcap(matcapName: string): Promise<void>`
+- `nv.volumeSilhouette: number` (settable) — Silhouette (Fresnel rim) enhancement for the BACKGROUND volume's 3D ray-march, [0, 1]; 0 (the default) is a no-op.
+- `nv.volumeGradientOpacity: number` (settable) — Gradient-magnitude opacity modulation for the BACKGROUND volume's 3D ray-march, [0, 1]; 0 (the default) is a no-op.
+- `nv.gamma: number` (settable) — Display gamma for the 3D volume render.
+- `nv.meshXRay: number` (settable)
+
+### Read the scene
+- `nv.volumes: NVImage[]`
+- `nv.meshes: NVMeshType[]`
+- `nv.colormaps: string[]`
+- `nv.meshShaders: string[]`
+
+## Option fields
+### ImageFromUrlOptions (volume options for loadVolumes/addVolume; setVolume takes the same fields without url, plus frame4D)
+- url: string | File — URL or File pointing to the volume
+- urlImageData?: string | File — URL or File for detached image data (e.g., AFNI .HEAD/.BRIK)
+- name?: string — Display name for this volume
+- colormap?: string — Colormap name (default: 'Gray')
+- colormapNegative?: string — Colormap for negative intensities
+- isColormapInverted?: boolean — Reverse the colormap (and the negative colormap, when set).
+- atlasOutline?: number — Outline width for a label/atlas volume, in its own voxels (default 0 = filled)
+- calMinNeg?: number — Minimum intensity for negative color mapping (default: NaN = symmetric)
+- calMaxNeg?: number — Maximum intensity for negative color mapping (default: NaN = symmetric)
+- colormapType?: number — Colormap type: 0=min-to-max, 1=zero-to-max (transparent below), 2=zero-to-max (translucent below)
+- isTransparentBelowCalMin?: boolean — Whether values below calMin are transparent (true) or clamped to min color (false).
+- limitFrames4D?: number — Maximum number of 4D frames to load (default: Infinity = load all).
+- opacity?: number — Volume opacity 0-1 (default: 1)
+- visible?: boolean — Whether the volume is drawn (default: true).
+- calMin?: number — Minimum intensity for color mapping
+- calMax?: number — Maximum intensity for color mapping
+- modulateAlpha?: number — Alpha modulation amount
+- isColorbarVisible?: boolean — Whether to show colorbar for this volume (default: true)
+- isNearestInterpolation?: boolean — 2D slice sampling: true = nearest-neighbour, false = linear.
+
+### MeshFromUrlOptions (mesh options for loadMeshes/addMesh; setMesh takes the same fields without url)
+- url: string | File — URL or File pointing to the mesh
+- name?: string — Display name for this mesh
+- opacity?: number — Mesh opacity 0-1 (default: 1)
+- color?: [number, number, number, number] — RGBA color in 0-1 range (default: [1,1,1,1])
+- rgba255?: [number, number, number, number]
+- isColorbarVisible?: boolean — Whether to show colorbar (default: true)
+- isLegendVisible?: boolean — Whether to show legend (default: false)
+- shaderType?: string — Shader type (default: 'phong').
+- sliceShaderType?: string — Shader type for 2D slice views.
+- visible?: boolean — Whether mesh is visible (default: true)
+- layers?: MeshLayerFromUrlOptions[] — Scalar overlay layers to load onto this mesh
+- tractOptions?: Partial<NVTractOptions> — Tract tessellation options (only used for tract file formats)
+- connectomeOptions?: Partial<NVConnectomeOptions> — Connectome extrusion options (only used for connectome file formats)
+
+### MeshLayerFromUrlOptions (per-vertex layer options for addMeshLayer; setMeshLayerProperty takes the same fields without url)
+- url: string | File — URL or File pointing to the layer data
+- name?: string — Display name for this layer
+- colormap?: string — Colormap name (default: 'warm')
+- colormapNegative?: string — Colormap for negative intensities (set to enable negative colormap)
+- calMin?: number — Minimum intensity for color mapping
+- calMax?: number — Maximum intensity for color mapping
+- calMinNeg?: number — Negative colormap threshold (absolute value used; defaults to calMin)
+- calMaxNeg?: number — Negative colormap maximum (absolute value used; defaults to calMax)
+- opacity?: number — Layer opacity 0-1 (default: 0.5)
+- isColorbarVisible?: boolean — Whether to show colorbar for this layer (default: true)
+- isColormapInverted?: boolean — Whether colormap lookup should be inverted
+- colormapType?: number — Colormap type: 0=min-to-max, 1=zero-to-max (transparent below), 2=zero-to-max (translucent below).
+- isTransparentBelowCalMin?: boolean — Whether values below calMin are transparent (true) or clamped to min color (false).
+- isAdditiveBlend?: boolean — Whether to use additive blending
+- outlineWidth?: number — Outline width
+
+### NVTractOptions (setTractOptions fields)
+- fiberRadius: number — Cylinder radius in mm (default: 0.5)
+- fiberSides: number — Number of polygon sides per cylinder ring (default: 7)
+- minLength: number — Skip streamlines shorter than this length in mm (default: 0)
+- decimation: number — Show every Nth streamline; 1 = all (default: 1)
+- colormap: string — Colormap for scalar coloring (default: 'warm')
+- colormapNegative: string — Colormap for negative scalar values
+- colorBy: string — Color mode: '' = local direction, 'global' = start-to-end direction, 'fixed' = use fixedColor, 'dpv:name' = per-vertex scalar, 'dps:name' = per-streamline scalar
+- calMin: number — Minimum intensity for scalar color mapping
+- calMax: number — Maximum intensity for scalar color mapping
+- calMinNeg: number — Negative colormap threshold (absolute value used)
+- calMaxNeg: number — Negative colormap maximum (absolute value used)
+- fixedColor: [number, number, number, number] — Fixed RGBA color [0-255] used when colorBy='fixed' (default: [255,255,255,255])
+- groupColors: Record<string, [number, number, number, number]> | null — Map of group name -> RGBA [0-255].
+
+### NVConnectomeOptions (setConnectomeOptions fields)
+- nodeColormap: string — Colormap for node colorValues (default: 'warm')
+- nodeColormapNegative: string — Colormap for negative node colorValues
+- nodeMinColor: number — Min colorValue for node color mapping
+- nodeMaxColor: number — Max colorValue for node color mapping
+- nodeScale: number — Sphere radius multiplier (default: 3)
+- edgeColormap: string — Colormap for edge colorValues (default: 'warm')
+- edgeColormapNegative: string — Colormap for negative edge colorValues
+- edgeMin: number — Min |colorValue| to display an edge
+- edgeMax: number — Max |colorValue| for edge color mapping
+- edgeScale: number — Cylinder radius multiplier (default: 1)
+
+## Examples
+### basic
+```js
+// Background with a statistical overlay: positive (warm) and negative (winter) in one layer.
+await nv.resetScene() // empty scene, default settings
+await nv.loadVolumes([
+  { url: 'spm152', isColorbarVisible: false }, // anatomy: no colorbar entry
+  {
+    url: 'spmMotor',
+    colormap: 'warm',
+    calMin: 4,
+    calMax: 4.01,
+    colormapNegative: 'winter',
+    calMinNeg: -4,
+    calMaxNeg: -4.01,
+    opacity: 0.5,
+  },
+])
+nv.isColorbarVisible = true // colorbars for the statistical map only
+nv.sliceType = 3 // multiplanar
+```
+
+### basic_paint_surface
+```js
+// Paint an fMRI volume onto the cortex: the app samples the voxel nearest each vertex.
+await nv.resetScene() // empty scene, default settings
+await nv.loadMeshes([{ url: 'BrainMesh_ICBM152.rh.mz3' }])
+await nv.addMeshLayer(0, {
+  url: 'motor_4t95vol.nii.gz',
+  colormap: 'warm',
+  calMin: 2,
+  calMax: 12,
+  colormapNegative: 'winter',
+  calMinNeg: -1,
+  calMaxNeg: -2,
+  opacity: 0.75,
+})
+nv.isColorbarVisible = true
+nv.sliceType = 4
+nv.azimuth = 290
+nv.elevation = 15
+```
+
+### explode
+```js
+// Sweep a clip plane down through the brain. Esc stops.
+await nv.resetScene() // empty scene, default settings
+await nv.loadVolumes([{ url: 'spm152' }, { url: 'spmMotor', colormap: 'warm', calMin: 4, calMax: 8 }])
+nv.backgroundColor = [1, 1, 1, 1]
+nv.sliceType = 4
+nv.azimuth = 250
+nv.elevation = 15
+nv.isClipPlaneCutaway = false
+for (let x = 1; x <= 12; x++) {
+  nv.setClipPlanes([[1 - x * 0.1, 0, 90]]) // [depth, azimuth, elevation]: superior plane moving down
+  await nv.wait(100)
+}
+```
