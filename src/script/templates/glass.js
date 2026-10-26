@@ -1,7 +1,5 @@
 // "Glass brain": silhouette rendering with an overlay, viewed from the side.
-await nv.removeAllMeshes()
-nv.mosaicString = ''
-nv.setClipPlanes([])
+await nv.resetScene() // empty scene, default settings
 await nv.loadVolumes([{ url: 'mni152' }, { url: 'spmMotor', colormap: 'warm', calMin: 4, calMax: 8 }])
 nv.volumeSilhouette = 0.6
 nv.volumeGradientOpacity = 0.6

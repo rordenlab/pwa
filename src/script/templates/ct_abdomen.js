@@ -1,7 +1,5 @@
 // Spin a CT: bones first, then a kidney colormap. Esc stops.
-await nv.removeAllMeshes()
-nv.mosaicString = ''
-nv.setClipPlanes([])
+await nv.resetScene() // empty scene, default settings
 await nv.loadVolumes([{ url: 'CT_Abdo', calMin: -1024, calMax: 640 }])
 nv.volumeRenderMode = 0
 nv.sliceType = 4
@@ -13,5 +11,6 @@ const spin = async () => {
   }
 }
 await spin()
-await nv.setVolume(0, { colormap: 'ct_kidneys' })
+// Explicit window until NiiVue applies CT colormap windows itself (niivue/mono#390)
+await nv.setVolume(0, { colormap: 'ct_kidneys', calMin: 100, calMax: 300 })
 await spin()

@@ -5,11 +5,12 @@
 ## How to answer
 Reply with ONE JavaScript code block, nothing else needed. It runs as the body of an async function:
 - Top-level `await` works. The globals are `nv` (the viewer) and `console` (prints to the output pane).
-- Start from a clean scene: `await nv.removeAllMeshes()`, `await nv.removeAllVolumes()`, `nv.mosaicString = ''`, `nv.setClipPlanes([])`.
+- Begin with `await nv.resetScene()`: it empties the scene and restores fixed default settings (background, view, neurological convention, clip planes, mosaic, render options), whatever the user's preferences, so the result does not depend on earlier edits. Omit it only when the user asks to build on the current scene.
 - Load data by file name, e.g. `{ url: 'spm152' }` (extension optional). Use the sample data below, or the user's own file names: MRIvue finds them in the user's folder or asks the user to locate them.
 - `nv.volumes[0]` is the background; later volumes are overlays drawn on top. Await every load before using it.
 - Change things through `nv` calls and properties (not by editing objects read from `nv.volumes`).
 - Animate with `await nv.wait(ms)` inside loops; the user can stop with Esc.
+- To give a one-click link instead, base64url-encode the UTF-8 script (no padding) into `https://rordenlab.github.io/pwa/#script=<encoded>`. The link opens the script for review; it runs only when the user presses Run. Keep links under ~8 KB; otherwise give the code block.
 - Only use members listed here; check names with `console.log(nv.colormaps)` or `console.log(nv.meshShaders)` when unsure.
 
 ## Conventions
@@ -24,7 +25,7 @@ Reply with ONE JavaScript code block, nothing else needed. It runs as the body o
 ## Data available by name
 - `spm152.nii.gz` (Volumes) — T1-weighted MNI152 template brain (SPM average size), 2 mm; good background for MNI-space statistics. License: ICBM 2009 nonlinear template (MNI; free use with attribution).
 - `spmMotor.nii.gz` (Volumes) — fMRI motor task t-statistic map in MNI space (positive and negative values); overlay on spm152. License: CC BY-NC 4.0 (C. Rorden, McCausland Center).
-- `mni152.nii.gz` (Volumes) — T1-weighted MNI152 template brain, 1 mm. License: ICBM 2009 nonlinear template (MNI; free use with attribution).
+- `mni152.nii.gz` (Volumes) — T1-weighted MNI152 2009 template brain (0.74 mm); opened at startup. Slightly larger brain than spm152. License: ICBM 2009 nonlinear template (MNI; free use with attribution).
 - `chris_t1.nii.gz` (Volumes) — T1-weighted MRI of one individual (native space). License: CC BY-NC 4.0 (C. Rorden, McCausland Center).
 - `chris_t2.nii.gz` (Volumes) — T2-weighted MRI of one individual (native space). License: CC BY-NC 4.0 (C. Rorden, McCausland Center).
 - `chris_MRA.nii.gz` (Volumes) — MR angiogram (bright vessels); ideal for maximum intensity projection. License: CC BY-NC 4.0 (C. Rorden, McCausland Center).
@@ -39,8 +40,10 @@ Reply with ONE JavaScript code block, nothing else needed. It runs as the body o
 - `motor_4t95mesh.mz3` (Meshes) — Isosurface mesh of the motor fMRI activation (MNI space). License: Surfice sample (McCausland Center); not stated.
 - `CIT168.mz3` (Meshes) — Subcortical nuclei atlas as meshes (Pauli et al. 2018). License: CC BY 4.0.
 - `aal.nii.gz` (Atlases) — AAL anatomical atlas: labeled regions in MNI space. License: AAL (Tzourio-Mazoyer et al. 2002); not stated.
-- `stroke.trk.gz` (Tracts) — Whole-brain tractography (streamlines) of a stroke patient (native space). License: courtesy L. Bonilha; not stated.
-- `LPBA40.jcon` (Connectomes) — Connectome: nodes and edges for the 56 LPBA40 regions (MNI space). License: LPBA40 atlas (Shattuck et al. 2008, LONI); not stated.
+- `TR_S_R.tt.gz` (Tracts) — Superior thalamic radiation, right (one bundle of the HCP-1065 tractography atlas, MNI space; DSI Studio .tt format). License: open source, https://brain.labsolver.org/hcp_trk_atlas.html (Yeh 2022).
+- `yeh2022.trx` (Tracts) — HCP-1065 tractography atlas (Yeh 2022) in MNI space; streamlines grouped into named bundles: nv.getTractGroups(0), setTractOptions(0, { groupColors }). License: open source, https://brain.labsolver.org/hcp_trk_atlas.html (Yeh 2022).
+- `LPBA40.jcon` (Connectomes) — Connectome: nodes and edges for the 56 LPBA40 regions (MNI space). License: BSD-2-Clause (MRIcroGL, github.com/rordenlab/MRIcroGL); LPBA40 atlas, Shattuck et al. 2008.
+- `aal.json` (Labels) — Region names and colors for aal.nii.gz: nv.setColormapLabelFromUrl(volumeIndex, 'aal.json'). License: BSD-2-Clause (NiiVue dev-images); AAL, Tzourio-Mazoyer et al. 2002.
 
 ## API (curated subset of NiiVue 1.0.0-rc.37)
 ### Load and remove
@@ -68,6 +71,7 @@ Reply with ONE JavaScript code block, nothing else needed. It runs as the body o
 - `nv.isLegendVisible: boolean` (settable)
 - `nv.isOrientCubeVisible: boolean` (settable) — Control whether the orientation cube is shown on the 3D render view.
 - `nv.isRadiological: boolean` (settable) — Control whether 2D slices use radiological or neurological convention.
+- `nv.setColormapLabelFromUrl(volumeIndex: number, url: string | File): Promise<void>` — Fetch a label colormap JSON from a URL or File and apply it to a volume.
 
 ### View and camera
 - `nv.sliceType: number` (settable)
@@ -180,11 +184,9 @@ Reply with ONE JavaScript code block, nothing else needed. It runs as the body o
 ### basic
 ```js
 // Background with a statistical overlay: positive (warm) and negative (winter) in one layer.
-await nv.removeAllMeshes()
-nv.mosaicString = ''
-nv.setClipPlanes([])
+await nv.resetScene() // empty scene, default settings
 await nv.loadVolumes([
-  { url: 'spm152' },
+  { url: 'spm152', isColorbarVisible: false }, // anatomy: no colorbar entry
   {
     url: 'spmMotor',
     colormap: 'warm',
@@ -196,15 +198,14 @@ await nv.loadVolumes([
     opacity: 0.5,
   },
 ])
+nv.isColorbarVisible = true // colorbars for the statistical map only
 nv.sliceType = 3 // multiplanar
 ```
 
 ### basic_paint_surface
 ```js
 // Paint an fMRI volume onto the cortex: the app samples the voxel nearest each vertex.
-await nv.removeAllVolumes()
-nv.mosaicString = ''
-nv.setClipPlanes([])
+await nv.resetScene() // empty scene, default settings
 await nv.loadMeshes([{ url: 'BrainMesh_ICBM152.rh.mz3' }])
 await nv.addMeshLayer(0, {
   url: 'motor_4t95vol.nii.gz',
@@ -225,8 +226,7 @@ nv.elevation = 15
 ### explode
 ```js
 // Sweep a clip plane down through the brain. Esc stops.
-await nv.removeAllMeshes()
-nv.mosaicString = ''
+await nv.resetScene() // empty scene, default settings
 await nv.loadVolumes([{ url: 'spm152' }, { url: 'spmMotor', colormap: 'warm', calMin: 4, calMax: 8 }])
 nv.backgroundColor = [1, 1, 1, 1]
 nv.sliceType = 4

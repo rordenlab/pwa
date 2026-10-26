@@ -1,6 +1,5 @@
 // Sweep a clip plane down through the brain. Esc stops.
-await nv.removeAllMeshes()
-nv.mosaicString = ''
+await nv.resetScene() // empty scene, default settings
 await nv.loadVolumes([{ url: 'spm152' }, { url: 'spmMotor', colormap: 'warm', calMin: 4, calMax: 8 }])
 nv.backgroundColor = [1, 1, 1, 1]
 nv.sliceType = 4

@@ -1,11 +1,13 @@
 import { type ReactNode, useEffect, useState } from 'react'
+import { nv } from '../nv'
 
 // Native inputs (ponytail: platform controls over a widget library).
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+/** `hint`: tooltip on hover, for settings whose effect is not obvious. */
+export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: control is the child
-    <label className="field">
+    <label className="field" title={hint}>
       <span>{label}</span>
       {children}
     </label>
@@ -51,6 +53,7 @@ export function Range({
   max = 1,
   step = 0.01,
   disabled = false,
+  hint,
 }: {
   label: string
   value: number
@@ -59,9 +62,10 @@ export function Range({
   max?: number
   step?: number
   disabled?: boolean
+  hint?: string
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} hint={hint}>
       <input
         type="range"
         disabled={disabled}
@@ -80,14 +84,16 @@ export function Choice({
   value,
   options,
   onChange,
+  hint,
 }: {
   label: string
   value: string
   options: string[]
   onChange: (v: string) => void
+  hint?: string
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} hint={hint}>
       {/* Core colormap lookup is case-insensitive; names list is capitalized. */}
       <select
         value={options.find((o) => o.toLowerCase() === value.toLowerCase()) ?? value}
@@ -107,14 +113,24 @@ export function Check({
   label,
   value,
   onChange,
+  hint,
+  disabled = false,
 }: {
   label: string
   value: boolean
   onChange: (v: boolean) => void
+  hint?: string
+  disabled?: boolean
 }) {
   return (
-    <label className="check">
-      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
+    // The tooltip sits on the label, so it still shows while the box is disabled.
+    <label className="check" title={hint}>
+      <input
+        type="checkbox"
+        checked={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       {label}
     </label>
   )
@@ -140,5 +156,22 @@ export function Color({
     <Field label={label}>
       <input type="color" value={toHex(value)} onChange={(e) => onChange(fromHex(e.target.value))} />
     </Field>
+  )
+}
+
+/** Per-layer colorbar entry; disabled, with a pointer to the global switch, while colorbars are hidden. */
+export function ColorbarCheck({ value, onChange }: { value?: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <Check
+      label="Colorbar"
+      value={value !== false}
+      onChange={onChange}
+      disabled={!nv.isColorbarVisible}
+      hint={
+        nv.isColorbarVisible
+          ? 'Include this layer in the colorbar'
+          : 'Colorbars are hidden: turn on View ▸ Colorbar to show them'
+      }
+    />
   )
 }

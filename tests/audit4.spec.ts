@@ -280,7 +280,9 @@ test('round 6: script assignments after a plain await stop when the scene was re
   // Stop pressed while the script waits.
   await gate()
   await runScript(page, 'await window.gate\nnv.backgroundColor = [1, 0, 0, 1]')
-  await page.evaluate(() => document.querySelector<HTMLButtonElement>('.script-bar button')?.click()) // Stop
+  await page.evaluate(() =>
+    document.querySelector<HTMLButtonElement>('button[aria-label="Stop script"]')?.click(),
+  ) // Stop
   await release()
   await expect(page.locator('.output .error')).toContainText('Stopped')
   expect(await red()).toBe(false)

@@ -1,6 +1,5 @@
 // CT with a tissue colormap and an oblique clip plane.
-await nv.removeAllMeshes()
-nv.mosaicString = ''
+await nv.resetScene() // empty scene, default settings
 await nv.loadVolumes([{ url: 'CT_Philips', colormap: 'ct_kidneys' }])
 nv.volumeRenderMode = 0
 nv.sliceType = 4

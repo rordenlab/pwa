@@ -1,6 +1,5 @@
 // Axial, coronal and sagittal renderings from both sides, on white.
-await nv.removeAllMeshes()
-nv.setClipPlanes([])
+await nv.resetScene() // empty scene, default settings
 nv.backgroundColor = [1, 1, 1, 1]
 await nv.loadVolumes([
   { url: 'spm152' },

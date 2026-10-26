@@ -2,11 +2,13 @@ import { javascript } from '@codemirror/lang-javascript'
 import { Prec } from '@codemirror/state'
 import { keymap } from '@codemirror/view'
 import { basicSetup, EditorView } from 'codemirror'
-import { Dialog } from 'radix-ui'
+import { Dialog, Tooltip } from 'radix-ui'
 import { useEffect, useRef, useState } from 'react'
+import { copyAIPrompt } from '../Dialogs'
 import { download, pickFiles, pickSave, write } from '../io/fs'
 import { bump, useNv } from '../nv'
 import { app, notify } from '../state'
+import { decodeScript, encodeScript, LINK } from './link'
 import { isRunning, type Line, locator, run, stop } from './run'
 import { snippets, templates } from './templates'
 
@@ -21,6 +23,8 @@ export const script = {
   /** Bumped when the editor is loaded with a different script. */
   id: 0,
   output: [] as Line[],
+  /** Where an unreviewed script came from ('link', 'paste'): shown with a review banner until replaced. */
+  origin: '',
   view: undefined as EditorView | undefined,
 }
 addEventListener('beforeunload', (e) => {
@@ -29,9 +33,9 @@ addEventListener('beforeunload', (e) => {
 
 const text = () => script.view?.state.doc.toString() ?? ''
 // Replacing the whole script (New/Open/Templates) is not an edit: dirty is reset right after.
-function setText(t: string, name: string, handle?: FileSystemFileHandle) {
+function setText(t: string, name: string, handle?: FileSystemFileHandle, origin = '') {
   script.view?.dispatch({ changes: { from: 0, to: script.view.state.doc.length, insert: t } })
-  Object.assign(script, { name, handle, dirty: false, id: script.id + 1 })
+  Object.assign(script, { name, handle, dirty: false, origin, id: script.id + 1 })
   app.togglePane?.('script', true)
   bump()
 }
@@ -88,6 +92,51 @@ function insert(text: string) {
   v.focus()
 }
 
+// Links fill the editor but never run: the user reviews, then presses Run.
+async function openLink(code = location.hash.match(LINK)?.[1]) {
+  if (!code) return
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search) // a reload does not re-import
+  if (!okToReplace()) return
+  try {
+    setText(await decodeScript(code), 'shared.js', undefined, 'link')
+  } catch {
+    notify('This script link is damaged or incomplete.')
+  }
+}
+addEventListener('hashchange', () => openLink())
+
+// Pasting a script (or a script link) anywhere outside a text field opens it for review, so a reply
+// from an AI assistant needs no trip to the menus.
+addEventListener('paste', (e) => {
+  const t = e.target as HTMLElement
+  if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return
+  const text = e.clipboardData?.getData('text/plain') ?? ''
+  const link = text.match(LINK)?.[1]
+  if (!link && !/\bnv\.\w/.test(text)) return
+  e.preventDefault()
+  if (link) openLink(link)
+  else if (okToReplace()) setText(text.replace(/^```\w*\n|\n?```\s*$/g, ''), 'pasted.js', undefined, 'paste') // drop a Markdown fence
+})
+
+// Chat apps often cut long links.
+const LONG_LINK = 8000
+
+function copyLink() {
+  const url = (async () => `${location.origin}${location.pathname}#script=${await encodeScript(text())}`)()
+  // A promise keeps Safari's user activation across the async encode.
+  navigator.clipboard
+    .write([new ClipboardItem({ 'text/plain': url.then((u) => new Blob([u], { type: 'text/plain' })) })])
+    .then(async () => {
+      const n = (await url).length
+      notify(
+        n > LONG_LINK
+          ? `Link copied (${Math.round(n / 1024)} KB): chat apps may truncate links this long; share the .js file instead.`
+          : 'Link copied: opening it shows this script for review; it runs only when Run is pressed.',
+      )
+    })
+    .catch((e) => notify(`Copy failed: ${(e as Error).message}`))
+}
+
 app.openScript = (f) => openScriptFile(f)
 app.insertScript = insert
 app.extraMenus = [
@@ -106,6 +155,7 @@ app.extraMenus = [
         },
         { label: 'Save', run: () => saveScript() },
         { label: 'Save As…', run: () => saveScript(true) },
+        { label: 'Copy Link', run: copyLink },
         'sep' as const,
         {
           label: 'Templates',
@@ -134,8 +184,8 @@ app.extraMenus = [
 export function ScriptPanel() {
   const host = useRef<HTMLDivElement>(null)
   const output = useNv(() => [...script.output])
-  const running = useNv(isRunning)
   const name = useNv(() => `${script.dirty ? '• ' : ''}${script.name}`)
+  const origin = useNv(() => script.origin)
   const [locating, setLocating] = useState<{ name: string; done: (f?: File) => void } | null>(null)
   const outRef = useRef<HTMLPreElement>(null)
 
@@ -187,6 +237,7 @@ export function ScriptPanel() {
         EditorView.contentAttributes.of({ 'aria-label': 'Script editor' }),
       ],
     })
+    openLink()
     return () => {
       script.view?.destroy()
       script.view = undefined
@@ -218,14 +269,12 @@ export function ScriptPanel() {
     <div className="script">
       <div className="script-bar">
         <span className="script-name">{name}</span>
-        <button
-          type="button"
-          onClick={running ? stop : runScript}
-          title={running ? 'Stop (Esc)' : 'Run (Shift+Enter)'}
-        >
-          {running ? 'Stop' : 'Run'}
-        </button>
       </div>
+      {origin && (
+        <p className="banner" role="note">
+          This script came from a {origin}: review before running.
+        </p>
+      )}
       <div className="editor" ref={host} />
       <pre className="output" ref={outRef} aria-live="polite">
         {output.map((l, i) => (
@@ -260,5 +309,56 @@ export function ScriptPanel() {
         </Dialog.Portal>
       </Dialog.Root>
     </div>
+  )
+}
+
+/**
+ * Always-visible rail at the right edge: scripting stays discoverable while its pane is closed.
+ */
+export function ScriptRail() {
+  const open = useNv(() => app.scriptOpen)
+  const running = useNv(isRunning)
+  const shared = useNv(() => script.origin === 'link')
+  const items = [
+    {
+      icon: '{ }',
+      title: 'Script editor',
+      tip: `${open ? 'Hide' : 'Show'} the editor (⌘J). Tip: paste a script or script link anywhere to open it.`,
+      state: open ? 'shown' : 'hidden',
+      run: () => app.togglePane?.('script'),
+    },
+    {
+      icon: running ? '■' : '▶',
+      title: running ? 'Stop script' : shared ? 'Run shared script' : 'Run script',
+      tip: running ? 'Stop the running script (Esc)' : 'Run the script in the editor (Shift+Enter)',
+      run: running ? stop : runScript,
+    },
+    {
+      icon: '✦',
+      title: 'Copy Prompt for AI',
+      tip: 'Copies a prompt describing MRIvue and this scene. Paste it into an AI assistant, then paste its reply here.',
+      run: copyAIPrompt,
+    },
+  ]
+  return (
+    <Tooltip.Provider delayDuration={300} disableHoverableContent>
+      <nav className="strip rail" aria-label="Scripting">
+        {items.map((it) => (
+          <Tooltip.Root key={it.title}>
+            <Tooltip.Trigger asChild>
+              <button type="button" aria-label={it.title} data-state={it.state} onClick={it.run}>
+                {it.icon}
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content className="tooltip" side="left" sideOffset={6}>
+                <strong>{it.title}</strong>
+                <span>{it.tip}</span>
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+        ))}
+      </nav>
+    </Tooltip.Provider>
   )
 }

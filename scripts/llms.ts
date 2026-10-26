@@ -25,7 +25,7 @@ export function generate(): string {
         'NVConnectomeOptions',
       ].map((t) => [t, parseTypeFields(typesDts, t)]),
     ),
-    samples: Object.entries(catalog.groups).flatMap(([group, paths]) =>
+    samples: Object.entries({ ...catalog.groups, Labels: catalog.labels }).flatMap(([group, paths]) =>
       paths.map((p) => {
         const name = p.slice(p.lastIndexOf('/') + 1)
         return { name, group, ...about[name] }

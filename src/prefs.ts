@@ -11,6 +11,8 @@ export const prefs = {
   antialias: true,
   /** Canvas resolution: device pixels (high), capped device pixels (auto), or CSS pixels (standard). */
   resolution: 'auto' as Resolution,
+  /** Open the MNI152 template when MRIvue starts without a script link or file. */
+  startTemplate: true,
 }
 export type Resolution = 'auto' | 'high' | 'standard'
 export const RESOLUTIONS: Record<Resolution, string> = {

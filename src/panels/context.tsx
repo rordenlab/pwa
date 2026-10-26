@@ -6,10 +6,11 @@ import { markChanged } from '../doc'
 import { VIEWS } from '../menu/menus'
 import { bump, MATCAPS, nv, useNv } from '../nv'
 import { app, select, selectedMesh } from '../state'
-import { Check, Choice, Color, Field, NumberField, Range } from './fields'
+import { Check, Choice, Color, ColorbarCheck, Field, NumberField, Range } from './fields'
 import { ColorbarIcon, MeshIcon, MeshLayerIcon } from './icons'
 import { LayerProps } from './LayerProps'
 import { Layers } from './Layers'
+import { groupColor, TractGroups } from './TractGroups'
 
 // Left-panel sections and when each applies (plan §4).
 
@@ -59,6 +60,13 @@ function setPlanes(p: number[][]) {
   nv.setClipPlanes(p)
   markChanged() // setClipPlanes emits no event
 }
+const near = (a: number[][], b: number[][]) =>
+  a.length === b.length &&
+  a.every((p, i) =>
+    p.every((x, k) => Math.abs(k === 1 ? ((x - b[i][k] + 540) % 360) - 180 : x - b[i][k]) < 0.01),
+  )
+/** The preset the current planes match; "Custom" once they are edited. */
+const presetOf = (list: number[][]) => Object.keys(PRESETS).find((k) => near(list, PRESETS[k])) ?? 'Custom'
 const CLIP_COLOR = { Hidden: 0, Translucent: 0.3, Shaded: -0.2 } as const
 
 function ClipPanel() {
@@ -68,15 +76,16 @@ function ClipPanel() {
   const color = useNv((n) => n.clipPlaneColor)
   const mode = (Object.entries(CLIP_COLOR).find(([, a]) => Math.abs(a - color[3]) < 0.01)?.[0] ??
     'Translucent') as keyof typeof CLIP_COLOR
+  const preset = presetOf(list)
   const update = (i: number, k: number, v: number) =>
     setPlanes(list.map((p, j) => (j === i ? p.map((x, m) => (m === k ? v : x)) : p)))
   return (
     <>
       <Choice
         label="Preset"
-        value=""
-        options={['', ...Object.keys(PRESETS)]}
-        onChange={(k) => k && setPlanes(PRESETS[k])}
+        value={preset}
+        options={preset === 'Custom' ? [...Object.keys(PRESETS), 'Custom'] : Object.keys(PRESETS)}
+        onChange={(k) => k in PRESETS && setPlanes(PRESETS[k])}
       />
       {list.map((p, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: planes are positional in core
@@ -128,7 +137,8 @@ function ClipPanel() {
 // --- Render ----------------------------------------------------------------
 const MODES = ['Composite', 'MIP', 'Slices']
 const MIN_LIGHT = 0.05 // below this, matcap shading is treated as off
-let lastLight = 0.2 // strength restored when a matcap is chosen again
+const ON_LIGHT = 0.3 // minimum when a matcap is turned on: weaker shading looks like no change
+let lastLight = ON_LIGHT // strength restored when a matcap is chosen again
 function RenderPanel() {
   const s = useNv((n) => ({
     mode: n.volumeRenderMode,
@@ -163,7 +173,7 @@ function RenderPanel() {
             nv.volumeIllumination = 0
             return
           }
-          if (!lit) nv.volumeIllumination = lastLight // turning lighting on restores the last strength
+          if (!lit) nv.volumeIllumination = Math.max(lastLight, ON_LIGHT) // restore the last strength, at least 30%
           nv.loadMatcap(m).then(markChanged)
         }}
       />
@@ -184,29 +194,13 @@ function RenderPanel() {
 }
 
 // --- Mesh shading ----------------------------------------------------------
+/** Scene-wide mesh settings. Shader, color and opacity belong to each mesh (Layer properties). */
 function MeshPanel() {
-  const i = useNv(() => selectedOf('mesh'))
-  const m = useNv(() => nv.meshes[i])
   const xray = useNv((n) => n.meshXRay)
-  if (!m) return null
   return (
     <>
-      <Field label="Mesh">
-        <span className="value">{m.name}</span>
-      </Field>
-      <Choice
-        label="Shader"
-        value={m.shaderType}
-        options={nv.meshShaders}
-        onChange={(shaderType) => nv.setMesh(i, { shaderType })}
-      />
-      <Color
-        label="Color"
-        value={m.color}
-        onChange={([r, g, b]) => nv.setMesh(i, { color: [r, g, b, m.color[3]] })}
-      />
-      <Range label="Opacity" value={m.opacity} onChange={(opacity) => nv.setMesh(i, { opacity })} />
       <Range label="X-ray" value={xray} onChange={bind('meshXRay')} />
+      <p className="note">Shader, color and opacity are set per mesh: select it in Layers.</p>
     </>
   )
 }
@@ -229,6 +223,7 @@ function MeshLayersPanel() {
   const l = useNv(() => (cur ? nv.meshes[cur.mi]?.layers[cur.li] : undefined))
   if (!cur || !l) return null
   const set = (u: Parameters<typeof nv.setMeshLayerProperty>[2]) => nv.setMeshLayerProperty(cur.mi, cur.li, u)
+  const label = !!l.colormapLabel
   return (
     <>
       <Field label="Layer">
@@ -246,32 +241,39 @@ function MeshLayersPanel() {
           ))}
         </select>
       </Field>
-      <Choice
-        label="Colormap"
-        value={l.colormap}
-        options={nv.colormaps}
-        onChange={(colormap) => set({ colormap })}
-      />
-      <NumberField label="Darkest" value={l.calMin} onChange={(calMin) => set({ calMin })} />
-      <NumberField label="Brightest" value={l.calMax} onChange={(calMax) => set({ calMax })} />
-      <Choice
-        label="Negative"
-        value={l.colormapNegative}
-        options={['', ...nv.colormaps]}
-        onChange={(colormapNegative) => set({ colormapNegative })}
-      />
-      {l.colormapNegative && (
+      {/* A label layer (atlas) takes its colors from its own table: color controls would do nothing. */}
+      {label ? (
+        <p className="note">Label layer: each region has its own color.</p>
+      ) : (
         <>
-          <NumberField
-            label="Neg. darkest"
-            value={l.calMinNeg}
-            onChange={(calMinNeg) => set({ calMinNeg })}
+          <Choice
+            label="Colormap"
+            value={l.colormap}
+            options={nv.colormaps}
+            onChange={(colormap) => set({ colormap })}
           />
-          <NumberField
-            label="Neg. brightest"
-            value={l.calMaxNeg}
-            onChange={(calMaxNeg) => set({ calMaxNeg })}
+          <NumberField label="Darkest" value={l.calMin} onChange={(calMin) => set({ calMin })} />
+          <NumberField label="Brightest" value={l.calMax} onChange={(calMax) => set({ calMax })} />
+          <Choice
+            label="Negative"
+            value={l.colormapNegative}
+            options={['', ...nv.colormaps]}
+            onChange={(colormapNegative) => set({ colormapNegative })}
           />
+          {l.colormapNegative && (
+            <>
+              <NumberField
+                label="Neg. darkest"
+                value={l.calMinNeg}
+                onChange={(calMinNeg) => set({ calMinNeg })}
+              />
+              <NumberField
+                label="Neg. brightest"
+                value={l.calMaxNeg}
+                onChange={(calMaxNeg) => set({ calMaxNeg })}
+              />
+            </>
+          )}
         </>
       )}
       <Range label="Opacity" value={l.opacity} onChange={(opacity) => set({ opacity })} />
@@ -283,6 +285,12 @@ function MeshLayersPanel() {
         step={0.5}
         onChange={(outlineWidth) => set({ outlineWidth })}
       />
+      {!label && (
+        <ColorbarCheck
+          value={l.isColorbarVisible}
+          onChange={(isColorbarVisible) => set({ isColorbarVisible })}
+        />
+      )}
     </>
   )
 }
@@ -409,8 +417,11 @@ function TractPanel() {
     ...Object.keys(trx?.dpv ?? {}).map((k) => `dpv:${k}`),
     ...Object.keys(trx?.dps ?? {}).map((k) => `dps:${k}`),
   ]
-  const set = (u: Parameters<typeof nv.setTractOptions>[1]) => nv.setTractOptions(i, u)
+  // Tract and connectome options emit no event (rc.37).
+  const set = (u: Parameters<typeof nv.setTractOptions>[1]) => nv.setTractOptions(i, u).then(markChanged)
   const colorBy = { '': 'direction', global: 'start → end', fixed: 'fixed color' } as Record<string, string>
+  const groups = nv.getTractGroups(i)
+  const BY_GROUP = 'group'
   return (
     <>
       <Range
@@ -439,10 +450,16 @@ function TractPanel() {
       />
       <Choice
         label="Color by"
-        value={colorBy[o.colorBy] ?? o.colorBy}
-        options={[...Object.values(colorBy), ...scalars]}
-        onChange={(c) => set({ colorBy: Object.keys(colorBy).find((k) => colorBy[k] === c) ?? c })}
+        value={o.groupColors ? BY_GROUP : (colorBy[o.colorBy] ?? o.colorBy)}
+        options={[...Object.values(colorBy), ...scalars, ...(groups.length ? [BY_GROUP] : [])]}
+        onChange={(c) =>
+          c === BY_GROUP
+            ? set({ groupColors: Object.fromEntries(groups.map((g, k) => [g, groupColor(k)])) })
+            : set({ colorBy: Object.keys(colorBy).find((k) => colorBy[k] === c) ?? c, groupColors: null })
+        }
+        hint={groups.length ? 'Any other choice shows every group again' : undefined}
       />
+      <TractGroups i={i} />
       {o.colorBy.includes(':') && (
         <Choice
           label="Colormap"
@@ -459,7 +476,8 @@ function ConnectomePanel() {
   const i = useNv(() => selectedOf('connectome'))
   const o = useNv(() => nv.meshes[i]?.connectomeOptions)
   if (!o) return null
-  const set = (u: Parameters<typeof nv.setConnectomeOptions>[1]) => nv.setConnectomeOptions(i, u)
+  const set = (u: Parameters<typeof nv.setConnectomeOptions>[1]) =>
+    nv.setConnectomeOptions(i, u).then(markChanged)
   return (
     <>
       <Choice

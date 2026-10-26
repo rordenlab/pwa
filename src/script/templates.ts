@@ -19,6 +19,6 @@ export const snippets: [string, string][] = [
   ['Clip plane', 'nv.setClipPlanes([[0.3, 180, 20]]) // [depth, azimuth, elevation] per plane'],
   ['Mosaic', "nv.mosaicString = 'A -20 0 20 40; S R 0'"],
   ['Wait', 'await nv.wait(100) // ms; lets the scene redraw'],
-  ['Clear scene', 'await nv.removeAllMeshes()\nawait nv.removeAllVolumes()'],
+  ['Reset scene', 'await nv.resetScene() // empty scene, default settings'],
   ['Print', 'console.log(nv.volumes.map((v) => v.name))'],
 ]

@@ -5,6 +5,7 @@ import { enqueue } from '../io/files'
 import { fetchFile } from '../io/fs'
 import { asMeshLayer } from '../io/project'
 import { bump, nv } from '../nv'
+import { resetScene } from '../settings'
 import { layerSet, resolve, retainNew } from './resolve'
 
 export type Line = { kind: 'log' | 'warn' | 'error' | 'info'; text: string }
@@ -104,14 +105,20 @@ const QUEUED = new Set([
   'loadDrawing',
   'loadSignals',
   'addSignal',
-  'setColormapLabelFromUrl',
   'addColormapFromUrl',
   'loadMatcap',
   'loadChunkedVolume',
 ])
 
 // Persistent edits core reports no event for; scripts must mark the document changed too.
-const EVENTLESS = new Set(['setClipPlanes', 'setClipPlane', 'setClipPlaneDepthAziElev', 'loadMatcap'])
+const EVENTLESS = new Set([
+  'setClipPlanes',
+  'setClipPlane',
+  'setClipPlaneDepthAziElev',
+  'loadMatcap',
+  'setTractOptions',
+  'setConnectomeOptions',
+])
 
 // Methods whose file arguments are resolved, by argument position.
 const LOADS: Record<string, number> = {
@@ -128,6 +135,28 @@ const LOADS: Record<string, number> = {
 function wrap(t: Token): NiiVue {
   const proxy: NiiVue = new Proxy(nv, {
     get(target, prop, _receiver) {
+      if (prop === 'setColormapLabelFromUrl')
+        return async (index: number, ref: string | File) => {
+          check(t)
+          const volume = nv.volumes[index] // the target as the script meant it, before any await
+          if (!volume) throw new Error(`no volume at index ${index}`)
+          const src = typeof ref === 'string' ? await resolveRef(ref, t, []) : ref
+          const table = JSON.parse(await (typeof src === 'string' ? await fetchFile(src) : src).text())
+          await enqueue(async () => {
+            check(t)
+            const i = nv.volumes.indexOf(volume)
+            if (i < 0) throw new Error(`${volume.name} was removed`)
+            await nv.setColormapLabel(i, table) // binds the volume before its first await
+          })
+          check(t)
+          markChanged()
+        }
+      if (prop === 'resetScene')
+        return async () => {
+          check(t)
+          await enqueue(resetScene) // like loads: never interleaves with drops or opens
+          check(t)
+        }
       if (prop === 'wait')
         return async (ms = 0) => {
           check(t)

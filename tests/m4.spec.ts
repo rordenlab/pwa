@@ -22,17 +22,18 @@ test('M4: sections follow view and data kinds', async ({ page }) => {
 
   await drop(page, ['fslmean.nii.gz'])
   await expect.poll(() => val(page, () => nv.volumes.length)).toBe(1)
+  // The first layer is selected automatically, so its properties show.
   await menu(page, 'View', 'Axial')
-  expect(await shown(page)).toEqual(['layers', 'slices', 'colorbar'])
+  expect(await shown(page)).toEqual(['layers', 'props', 'slices', 'colorbar'])
 
   await menu(page, 'View', 'Multiplanar')
-  expect(await shown(page)).toEqual(['layers', 'clip', 'render', 'slices', 'colorbar'])
+  expect(await shown(page)).toEqual(['layers', 'props', 'clip', 'render', 'slices', 'colorbar'])
 
   await menu(page, 'View', 'Render')
-  expect(await shown(page)).toEqual(['layers', 'clip', 'render', 'colorbar'])
+  expect(await shown(page)).toEqual(['layers', 'props', 'clip', 'render', 'colorbar'])
 
   await menu(page, 'View', 'Mosaic')
-  expect(await shown(page)).toEqual(['layers', 'mosaic', 'colorbar'])
+  expect(await shown(page)).toEqual(['layers', 'props', 'mosaic', 'colorbar'])
 
   await menu(page, 'View', 'Render')
   await page.locator('[role=treeitem]').first().click()
@@ -107,10 +108,13 @@ test('M4: every control drives core state and follows script changes', async ({ 
   // Clip planes and render
   await menu(page, 'View', 'Render')
   const c = sec(page, 'clip')
+  await expect(c.getByLabel('Preset')).toHaveValue('None')
   await c.getByLabel('Preset').selectOption('One plane')
+  await expect(c.getByLabel('Preset')).toHaveValue('One plane') // the choice stays shown
   await expect(c.locator('fieldset')).toHaveCount(1)
   await c.getByLabel('Depth').fill('0.5')
   expect(await val(page, () => nv.getClipPlaneDepthAziElev(0)[0])).toBeCloseTo(0.5)
+  await expect(c.getByLabel('Preset')).toHaveValue('Custom') // edited planes no longer match a preset
   await c.getByLabel(/Cutaway/).check()
   expect(await val(page, () => nv.isClipPlaneCutaway)).toBe(true)
   await c.getByLabel('Clip overlays').check()
@@ -149,12 +153,16 @@ test('M4: every control drives core state and follows script changes', async ({ 
   await drop(page, ['TR_S_R.tt.gz'])
   await drop(page, ['LPBA40.jcon'])
   await expect.poll(() => val(page, () => nv.meshes.length)).toBe(3)
+  // Per-mesh settings live in Layer properties only; Mesh shading holds the scene-wide X-ray.
   const me = sec(page, 'mesh')
-  await me.getByLabel('Shader').selectOption('toon')
-  await expect.poll(() => val(page, () => nv.meshes[0].shaderType)).toBe('toon')
+  await expect(me.getByLabel('Shader')).toHaveCount(0)
   await me.getByLabel('X-ray').fill('0.4')
   expect(await val(page, () => nv.meshXRay)).toBeCloseTo(0.4)
-  await me.getByLabel('Opacity').fill('0.6')
+  await page.locator('[role=treeitem]', { hasText: 'BrainMesh_ICBM152.lh' }).click()
+  const pr = sec(page, 'props')
+  await pr.getByLabel('Shader').selectOption('toon')
+  await expect.poll(() => val(page, () => nv.meshes[0].shaderType)).toBe('toon')
+  await pr.getByLabel('Opacity').fill('0.6')
   await expect.poll(() => val(page, () => nv.meshes[0].opacity)).toBeCloseTo(0.6)
 
   const t = sec(page, 'tracts')
@@ -204,7 +212,7 @@ test('M4: MatCap "(none)" and Illumination stay in step', async ({ page }) => {
   await expect(r.getByLabel('MatCap')).toHaveValue('') // default: no lighting
   await expect(light).toBeDisabled()
   await r.getByLabel('MatCap').selectOption('Cortex')
-  await expect.poll(illum).toBeCloseTo(0.2) // turning on from none starts at 0.2
+  await expect.poll(illum).toBeCloseTo(0.3) // turning on from none starts at 0.3
   await expect(light).toBeEnabled()
   await expect(light).toHaveAttribute('min', '0.05') // off only via "(none)"
   await light.fill('0.7')
@@ -213,6 +221,10 @@ test('M4: MatCap "(none)" and Illumination stay in step', async ({ page }) => {
   await expect(light).toBeDisabled()
   await r.getByLabel('MatCap').selectOption('Shiny')
   await expect.poll(illum).toBeCloseTo(0.7) // restores the last strength
+  await light.fill('0.2')
+  await r.getByLabel('MatCap').selectOption('')
+  await r.getByLabel('MatCap').selectOption('Cortex')
+  await expect.poll(illum).toBeCloseTo(0.3) // but never below 0.3, where shading is hard to see
   await page.evaluate(() => {
     nv.volumeIllumination = 0 // a script turning lighting off shows "(none)"
   })
@@ -263,6 +275,11 @@ test('M4: Mesh layers section edits both sides of a painted overlay', async ({ p
   await expect(s.getByLabel('Neg. darkest')).toHaveCount(0)
   await s.getByLabel('Colormap').selectOption('Hot')
   await expect.poll(async () => (await layer()).colormap.toLowerCase()).toBe('hot')
+  await page.evaluate(() => {
+    nv.isColorbarVisible = true // the per-layer box is disabled while colorbars are hidden
+  })
+  await s.getByLabel('Colorbar').uncheck()
+  await expect.poll(async () => (await layer()).isColorbarVisible).toBe(false)
   // The tree and the picker stay in sync; Layer properties does not duplicate these controls.
   await page.locator('[role=treeitem]', { hasText: 'motor_4t95vol' }).click()
   await expect(page.locator('[data-section="props"]')).toHaveCount(0)

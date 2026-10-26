@@ -18,6 +18,7 @@ import { bump, nv } from '../nv'
 import { fromHex, toHex } from '../panels/fields'
 import { prefs, RESOLUTIONS, type Resolution, setQuality } from '../prefs'
 import { retain } from '../script/resolve'
+import { canRedo, canUndo, redo, undo } from '../settings'
 import { app, notify, selectedMesh, selectedSurface } from '../state'
 
 export type Item =
@@ -184,6 +185,9 @@ export function menus(): Menu[] {
     {
       label: 'Edit',
       items: [
+        { label: 'Undo', shortcut: 'Mod+Z', disabled: !canUndo(), run: undo },
+        { label: 'Redo', shortcut: 'Mod+Shift+Z', disabled: !canRedo(), run: redo },
+        'sep',
         { label: 'Copy Screenshot', shortcut: 'Mod+Shift+C', run: copyScreenshot },
         ...(app.editMenu ?? []),
       ],

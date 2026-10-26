@@ -1,7 +1,5 @@
 // Paint an fMRI volume onto the cortex: the app samples the voxel nearest each vertex.
-await nv.removeAllVolumes()
-nv.mosaicString = ''
-nv.setClipPlanes([])
+await nv.resetScene() // empty scene, default settings
 await nv.loadMeshes([{ url: 'BrainMesh_ICBM152.rh.mz3' }])
 await nv.addMeshLayer(0, {
   url: 'motor_4t95vol.nii.gz',

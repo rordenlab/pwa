@@ -23,7 +23,7 @@ app.editMenu = [{ label: 'Preferences…', shortcut: 'Mod+,', run: () => show('p
  * Help ▸ Copy Prompt for AI: the AI brief (public/llms.txt) plus the current scene, ready to paste into
  * an assistant. The clipboard gets a promise so Safari still counts the menu click as user activation.
  */
-async function copyAIPrompt() {
+export async function copyAIPrompt() {
   const text = (async () => {
     const brief = await (await fetch(`${import.meta.env.BASE_URL}llms.txt`)).text()
     const scene = sceneSection({
@@ -91,6 +91,11 @@ function Prefs() {
         value={Object.keys(VIEWS).find((k) => VIEWS[k] === p.startupView) ?? 'Multiplanar'}
         options={Object.keys(VIEWS)}
         onChange={(v) => set({ startupView: VIEWS[v] })}
+      />
+      <Check
+        label="Open MNI152 template at startup"
+        value={p.startTemplate}
+        onChange={(startTemplate) => set({ startTemplate })}
       />
       <Check
         label="Radiological convention"

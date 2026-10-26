@@ -1,4 +1,5 @@
 // Document state and file commands (plan §6). File I/O goes through src/io.
+import { samples } from './catalog'
 import { classifyOrVolume, ext } from './io/classify'
 import { addFiles, addNow, enqueue } from './io/files'
 import {
@@ -195,6 +196,21 @@ const openDocument = (file: File, handle?: FileSystemFileHandle) =>
     newDocument(file.name, handle)
     return true
   })
+
+/**
+ * Startup template, so the controls have something to act on. The scene stays clean and untitled:
+ * File ▸ Open or a .nvd replaces it without asking; drops add to it (e.g. a statistical map in MNI
+ * space). Offline on a first visit: start empty.
+ */
+export function openStartTemplate() {
+  const start = samples.find((s) => s.name === 'mni152.nii.gz')
+  if (!start) return
+  return enqueue(async () => {
+    if (nv.volumes.length || nv.meshes.length) return // a launched file or script got there first
+    await addNow([await fetchFile(start.url)], undefined)
+    setDirty(false)
+  }).catch(() => {})
+}
 
 /**
  * A script called nv.loadDocument: same bookkeeping, no prompt (the script asked for it).

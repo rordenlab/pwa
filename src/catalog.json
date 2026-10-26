@@ -4,7 +4,7 @@
     "Volumes": [
       "spm152.nii.gz",
       "spmMotor.nii.gz",
-      "mni152.nii.gz",
+      "samples/mni152.nii.gz",
       "chris_t1.nii.gz",
       "chris_t2.nii.gz",
       "chris_MRA.nii.gz",
@@ -22,9 +22,10 @@
       "CIT168/CIT168.mz3"
     ],
     "Atlases": ["samples/aal.nii.gz"],
-    "Tracts": ["samples/stroke.trk.gz"],
+    "Tracts": ["samples/TR_S_R.tt.gz", "samples/yeh2022.trx"],
     "Connectomes": ["samples/LPBA40.jcon"]
   },
+  "labels": ["samples/aal.json"],
   "about": {
     "spm152.nii.gz": {
       "desc": "T1-weighted MNI152 template brain (SPM average size), 2 mm; good background for MNI-space statistics",
@@ -35,7 +36,7 @@
       "license": "CC BY-NC 4.0 (C. Rorden, McCausland Center)"
     },
     "mni152.nii.gz": {
-      "desc": "T1-weighted MNI152 template brain, 1 mm",
+      "desc": "T1-weighted MNI152 2009 template brain (0.74 mm); opened at startup. Slightly larger brain than spm152",
       "license": "ICBM 2009 nonlinear template (MNI; free use with attribution)"
     },
     "chris_t1.nii.gz": {
@@ -90,17 +91,25 @@
       "desc": "Subcortical nuclei atlas as meshes (Pauli et al. 2018)",
       "license": "CC BY 4.0"
     },
+    "aal.json": {
+      "desc": "Region names and colors for aal.nii.gz: nv.setColormapLabelFromUrl(volumeIndex, 'aal.json')",
+      "license": "BSD-2-Clause (NiiVue dev-images); AAL, Tzourio-Mazoyer et al. 2002"
+    },
     "aal.nii.gz": {
       "desc": "AAL anatomical atlas: labeled regions in MNI space",
       "license": "AAL (Tzourio-Mazoyer et al. 2002); not stated"
     },
-    "stroke.trk.gz": {
-      "desc": "Whole-brain tractography (streamlines) of a stroke patient (native space)",
-      "license": "courtesy L. Bonilha; not stated"
+    "yeh2022.trx": {
+      "desc": "HCP-1065 tractography atlas (Yeh 2022) in MNI space; streamlines grouped into named bundles: nv.getTractGroups(0), setTractOptions(0, { groupColors })",
+      "license": "open source, https://brain.labsolver.org/hcp_trk_atlas.html (Yeh 2022)"
+    },
+    "TR_S_R.tt.gz": {
+      "desc": "Superior thalamic radiation, right (one bundle of the HCP-1065 tractography atlas, MNI space; DSI Studio .tt format)",
+      "license": "open source, https://brain.labsolver.org/hcp_trk_atlas.html (Yeh 2022)"
     },
     "LPBA40.jcon": {
       "desc": "Connectome: nodes and edges for the 56 LPBA40 regions (MNI space)",
-      "license": "LPBA40 atlas (Shattuck et al. 2008, LONI); not stated"
+      "license": "BSD-2-Clause (MRIcroGL, github.com/rordenlab/MRIcroGL); LPBA40 atlas, Shattuck et al. 2008"
     }
   }
 }

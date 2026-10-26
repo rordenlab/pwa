@@ -37,6 +37,7 @@ export const CURATED: Record<string, string[]> = {
     'isLegendVisible',
     'isOrientCubeVisible',
     'isRadiological',
+    'setColormapLabelFromUrl',
   ],
   'View and camera': [
     'sliceType',
@@ -97,11 +98,12 @@ export function aiBrief({ version, members, types, samples, examples }: BriefInp
 ## How to answer
 Reply with ONE JavaScript code block, nothing else needed. It runs as the body of an async function:
 - Top-level \`await\` works. The globals are \`nv\` (the viewer) and \`console\` (prints to the output pane).
-- Start from a clean scene: \`await nv.removeAllMeshes()\`, \`await nv.removeAllVolumes()\`, \`nv.mosaicString = ''\`, \`nv.setClipPlanes([])\`.
+- Begin with \`await nv.resetScene()\`: it empties the scene and restores fixed default settings (background, view, neurological convention, clip planes, mosaic, render options), whatever the user's preferences, so the result does not depend on earlier edits. Omit it only when the user asks to build on the current scene.
 - Load data by file name, e.g. \`{ url: 'spm152' }\` (extension optional). Use the sample data below, or the user's own file names: MRIvue finds them in the user's folder or asks the user to locate them.
 - \`nv.volumes[0]\` is the background; later volumes are overlays drawn on top. Await every load before using it.
 - Change things through \`nv\` calls and properties (not by editing objects read from \`nv.volumes\`).
 - Animate with \`await nv.wait(ms)\` inside loops; the user can stop with Esc.
+- To give a one-click link instead, base64url-encode the UTF-8 script (no padding) into \`https://rordenlab.github.io/pwa/#script=<encoded>\`. The link opens the script for review; it runs only when the user presses Run. Keep links under ~8 KB; otherwise give the code block.
 - Only use members listed here; check names with \`console.log(nv.colormaps)\` or \`console.log(nv.meshShaders)\` when unsure.
 
 ## Conventions

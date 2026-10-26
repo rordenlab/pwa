@@ -1,7 +1,5 @@
 // Positive and negative values on a render; zero voxels fall below "darkest" and are not drawn.
-await nv.removeAllMeshes()
-nv.mosaicString = ''
-nv.setClipPlanes([])
+await nv.resetScene() // empty scene, default settings
 await nv.loadVolumes([
   { url: 'spm152' },
   {

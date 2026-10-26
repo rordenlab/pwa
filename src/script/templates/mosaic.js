@@ -1,6 +1,5 @@
 // Axial mosaic with labels, a sagittal cross-reference and a render tile.
-await nv.removeAllMeshes()
-nv.setClipPlanes([])
+await nv.resetScene() // empty scene, default settings
 await nv.loadVolumes([
   { url: 'spm152' },
   {

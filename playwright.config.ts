@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test'
 // dev: fast feedback on the Vite dev server. prod: the built app with its service worker.
 export default defineConfig({
   testDir: 'tests',
+  // Loads and WebGL rendering are software-only in headless runs; under a busy full run 5 s is too tight.
+  expect: { timeout: 15_000 },
   webServer: [
     { command: 'bunx vite --port 5173 --strictPort', url: 'http://localhost:5173/pwa/', reuseExistingServer: true },
     {

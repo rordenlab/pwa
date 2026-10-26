@@ -35,7 +35,7 @@ export function bump() {
 }
 for (const e of EVENTS) nv.addEventListener(e, bump)
 
-const subscribe = (f: () => void) => {
+export const subscribe = (f: () => void) => {
   listeners.add(f)
   return () => listeners.delete(f)
 }
@@ -47,12 +47,15 @@ export function useNv<T>(select: (n: NiiVue) => T): T {
   return select(nv)
 }
 
-const attached = new WeakSet<HTMLCanvasElement>()
-/** Quality comes from preferences, applied before the GL context exists. */
-export async function attach(canvas: HTMLCanvasElement, quality: { antialias: boolean; pixelRatio: number }) {
-  // StrictMode runs effects twice on the same element.
-  if (attached.has(canvas)) return
-  attached.add(canvas)
-  nv.devicePixelRatio = quality.pixelRatio
-  await nv.attachToCanvas(canvas, quality.antialias)
+const attached = new WeakMap<HTMLCanvasElement, Promise<unknown>>()
+/** Quality comes from preferences, applied before the GL context exists. Resolves once attached. */
+export function attach(canvas: HTMLCanvasElement, quality: { antialias: boolean; pixelRatio: number }) {
+  // StrictMode runs effects twice on the same element: both calls share one attach.
+  let done = attached.get(canvas)
+  if (!done) {
+    nv.devicePixelRatio = quality.pixelRatio
+    done = nv.attachToCanvas(canvas, quality.antialias)
+    attached.set(canvas, done)
+  }
+  return done
 }

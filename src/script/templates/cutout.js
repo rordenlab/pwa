@@ -1,7 +1,6 @@
 // MRIcroGL's cutout box, rebuilt from three clip planes in cutaway mode:
 // cutaway removes only the block where all three planes overlap.
-await nv.removeAllMeshes()
-nv.mosaicString = ''
+await nv.resetScene() // empty scene, default settings
 await nv.loadVolumes([
   { url: 'spm152' },
   {

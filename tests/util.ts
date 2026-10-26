@@ -27,6 +27,16 @@ export const test = base.extend<{ consoleGuard: undefined; allowedConsole: RegEx
   allowedConsole: [null, { option: true }],
   consoleGuard: [
     async ({ page, allowedConsole }, use) => {
+      // Tests start from an empty scene; the startup template has its own test.
+      await page.addInitScript(() => {
+        const k = 'niivue-pwa:prefs'
+        try {
+          localStorage.setItem(
+            k,
+            JSON.stringify({ ...JSON.parse(localStorage.getItem(k) ?? '{}'), startTemplate: false }),
+          )
+        } catch {}
+      })
       const errors: string[] = []
       page.on('pageerror', (e) => errors.push(e.message))
       page.on(

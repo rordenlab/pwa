@@ -1,6 +1,5 @@
 // Cortex with painted fMRI and a translucent scalp.
-await nv.removeAllVolumes()
-nv.mosaicString = ''
+await nv.resetScene() // empty scene, default settings
 await nv.loadMeshes([
   { url: 'BrainMesh_ICBM152.rh.mz3' },
   { url: 'scalp.mz3', color: [0.83, 0.69, 0.22, 1], opacity: 0.4 },
@@ -10,4 +9,3 @@ nv.isColorbarVisible = false
 nv.sliceType = 4
 nv.azimuth = 270
 nv.elevation = 15
-nv.setClipPlanes([]) // ponytail: rc.37 does not clip meshes

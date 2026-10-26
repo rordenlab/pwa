@@ -13,6 +13,7 @@ export const app = {
   openScript: undefined as ((f: File) => void) | undefined,
   insertScript: undefined as ((text: string) => void) | undefined,
   workspace: undefined as FileSystemDirectoryHandle | undefined,
+  scriptOpen: false,
   togglePane: undefined as ((p: 'tools' | 'script', open?: boolean) => void) | undefined,
   /** Menus contributed by later features (Script, Help). */
   extraMenus: undefined as Menu[] | undefined,
@@ -55,10 +56,13 @@ export function select(s: Selection) {
   bump()
 }
 
+// With nothing selected, the first tree row is, so the properties panel always has a target.
+const first = (): Selection => (nv.volumes.length ? { volume: 0 } : nv.meshes.length ? { mesh: 0 } : null)
+
 function follow() {
+  if (!positionOf(picked)) picked = objectOf(first()) // nothing selected, or the selected layer is gone
   const s = positionOf(picked)
   if (JSON.stringify(s) === JSON.stringify(app.selection)) return
-  if (!s) picked = null // the selected layer is gone
   app.selection = s
   bump()
 }

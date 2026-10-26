@@ -571,3 +571,61 @@ body {
   opacity: 0.8;
   font-size: 11px;
 }
+.banner {
+  margin: 0;
+  padding: 4px 8px;
+  border-left: 3px solid var(--accent);
+  background: var(--field);
+  font-size: 12px;
+}
+.group-table {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  border: 1px solid var(--border);
+}
+.group-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.group-table th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  text-align: left;
+}
+.group-table td,
+.group-table th {
+  padding: 2px 6px;
+}
+.group-table input[type="color"] {
+  width: 32px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+}
+.group-table th:first-child,
+.group-table th:last-child {
+  width: 1%;
+}
+main.panes {
+  display: flex;
+}
+main.panes > .panes {
+  flex: 1;
+  min-width: 0;
+}
+.strip.rail {
+  border-right: 0;
+  border-left: 1px solid var(--border);
+}
+/* Phones: no room beside the panes; scripting stays in the ☰ menu. */
+@media (max-width: 600px) {
+  .strip.rail {
+    display: none;
+  }
+}
+.strip.rail button[data-state="shown"] {
+  color: var(--link); /* text glyph: needs ≥4.5:1 on the page background */
+}

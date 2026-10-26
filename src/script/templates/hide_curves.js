@@ -1,9 +1,7 @@
 // Subcortical atlas inside a smoothed, see-through hemisphere.
-await nv.removeAllVolumes()
-nv.mosaicString = ''
-nv.setClipPlanes([])
+await nv.resetScene() // empty scene, default settings
 await nv.loadMeshes([
-  { url: 'BrainMesh_ICBM152_smoothed.lh.mz3', shaderType: 'rim', opacity: 0.5 },
+  { url: 'BrainMesh_ICBM152_smoothed.lh.mz3', shaderType: 'outline' },
   { url: 'CIT168.mz3' },
 ])
 nv.sliceType = 4

@@ -1,18 +1,21 @@
 import { useEffect, useRef } from 'react'
 import { Group, Panel, Separator, useDefaultLayout, usePanelRef } from 'react-resizable-panels'
 import { Dialogs } from './Dialogs'
-import { doc, openPicked } from './doc'
+import { doc, openPicked, openStartTemplate } from './doc'
 import { hasFSA } from './io/fs'
 import { matches } from './menu/keys'
 import { Menubar, NARROW } from './menu/Menubar'
 import { shortcutItems } from './menu/menus'
-import { attach, nv, useNv } from './nv'
+import { attach, bump, nv, useNv } from './nv'
 import { ToolPanel } from './panels/context'
 import { pixelRatio, prefs } from './prefs'
-import { ScriptPanel } from './script/Script'
+import { LINK } from './script/link'
+import { ScriptPanel, ScriptRail } from './script/Script'
 import { app } from './state'
 
 const APP = 'MRIvue'
+// Read before the script panel consumes the link.
+const LINKED = LINK.test(location.hash)
 
 function toggle(p: ReturnType<typeof usePanelRef>, open?: boolean) {
   const h = p.current
@@ -38,12 +41,10 @@ export function App() {
     app.togglePane = (p, open) => toggle(p === 'tools' ? tools : script, open)
   }, [tools, script])
 
-  // Small screens start with the scene only; both panes stay one tap away (☰ ▸ View ▸ Toggle Tools).
+  // The script pane always starts closed (the right rail opens it); small screens start with the scene only.
   useEffect(() => {
-    if (matchMedia(NARROW).matches) {
-      tools.current?.collapse()
-      script.current?.collapse()
-    }
+    script.current?.collapse()
+    if (matchMedia(NARROW).matches) tools.current?.collapse()
   }, [tools, script])
 
   useEffect(() => {
@@ -51,7 +52,10 @@ export function App() {
   }, [title])
 
   useEffect(() => {
-    if (canvas.current) attach(canvas.current, { antialias: prefs.antialias, pixelRatio: pixelRatio() })
+    if (!canvas.current) return
+    attach(canvas.current, { antialias: prefs.antialias, pixelRatio: pixelRatio() }).then(() => {
+      if (prefs.startTemplate && !LINKED) openStartTemplate()
+    })
   }, [])
 
   useEffect(() => {
@@ -62,6 +66,12 @@ export function App() {
       if (e.defaultPrevented || (editing && !(e.metaKey || e.ctrlKey))) return // e.g. the editor's own ⌘S
       const item = shortcutItems().find((i) => i.shortcut && matches(i.shortcut, e))
       if (!item || item.disabled) return
+      // Text fields keep their own undo; sliders, selects and checkboxes have none, so ⌘Z undoes the scene.
+      const typing =
+        editing &&
+        !(t instanceof HTMLInputElement && /^(range|checkbox|color|radio)$/.test(t.type)) &&
+        t.tagName !== 'SELECT'
+      if (typing && /^Mod\+(Shift\+)?Z$/.test(item.shortcut ?? '')) return
       e.preventDefault()
       item.run?.()
     }
@@ -112,11 +122,24 @@ export function App() {
             <canvas ref={canvas} />
           </Panel>
           <Separator className="sep" disableDoubleClick onDoubleClick={() => toggle(script)} />
-          <Panel id="script" panelRef={script} collapsible defaultSize="0" minSize={200} className="side">
+          <Panel
+            id="script"
+            panelRef={script}
+            collapsible
+            defaultSize="0"
+            minSize={200}
+            className="side"
+            onResize={(s) => {
+              if (app.scriptOpen === s.inPixels > 0) return
+              app.scriptOpen = s.inPixels > 0
+              bump()
+            }}
+          >
             <h2>Scripting</h2>
             <ScriptPanel />
           </Panel>
         </Group>
+        <ScriptRail />
       </main>
       <Dialogs />
       <footer className="status">
